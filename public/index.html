@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Volt &amp; Conseil – Assistant électricité</title>
+<style>
+:root{--bg:#f4f6f8;--ink:#14202b;--muted:#5a6672;--card:#fff;--line:#d8dee4;--brand:#1d3f66;--onbrand:#fff;--bot:#e9eef3}
+@media (prefers-color-scheme:dark){:root{--bg:#0f151b;--ink:#eef2f5;--muted:#a1acb7;--card:#17202a;--line:#2a3541;--brand:#5f93cf;--onbrand:#0f151b;--bot:#1f2a35}}
+*,*:before,*:after{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+.app{max-width:720px;margin:0 auto;height:100%;display:flex;flex-direction:column;padding:0 16px}
+header{padding:18px 0 12px;border-bottom:1px solid var(--line)}
+header h1{margin:0;font-size:1.35rem}
+header p{margin:2px 0 0;color:var(--muted);font-size:.92rem}
+.c{display:block;margin-top:10px;font-size:.9rem;color:var(--muted)}
+select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+#log{flex:1;overflow-y:auto;padding:16px 0;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:88%;padding:10px 14px;border-radius:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.bot{background:var(--bot);align-self:flex-start;border-bottom-left-radius:4px}
+.me{background:var(--brand);color:var(--onbrand);align-self:flex-end;border-bottom-right-radius:4px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{font:inherit;font-size:.9rem;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 12px;border-radius:999px;cursor:pointer}
+form{display:flex;gap:8px;padding:10px 0}
+input{flex:1;font:inherit;font-size:1rem;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);min-width:0}
+.send{font:inherit;font-weight:600;border:0;border-radius:10px;background:var(--brand);color:var(--onbrand);padding:0 18px;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.foot{font-size:.78rem;color:var(--muted);padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+</style>
+</head>
+<body>
+<div class="app">
+  <header><h1>Volt &amp; Conseil</h1><p>Posez votre question d’électricité. Réponse immédiate.</p>
+  <label class="c">Votre pays : <select id="country" aria-label="Votre pays"><option value="RDC">RD Congo</option><option value="CI">Côte d’Ivoire</option><option value="CM">Cameroun</option><option value="FR">France</option><option value="AUTRE">Autre pays</option></select></label></header>
+  <div id="log" aria-live="polite"></div>
+  <form id="f">
+    <input id="q" placeholder="Votre question…" autocomplete="off" aria-label="Votre question" maxlength="500">
+    <button class="send" type="submit">Envoyer</button>
+  </form>
+  <div class="foot">Conseils indicatifs, ne remplaçant pas un électricien sur place. En cas de danger (étincelles, odeur de brûlé), coupez le courant général et appelez les secours.<br>Commandes et contact : WhatsApp +243 837 617 025 · jeankaba148@gmail.com</div>
+</div>
+<script>
+const log=document.getElementById('log'),f=document.getElementById('f'),q=document.getElementById('q');
+let history=[],busy=false;
+function add(cls,text){const d=document.createElement('div');d.className='msg '+cls;d.textContent=text;log.appendChild(d);log.scrollTop=log.scrollHeight;return d}
+add('bot','Bonjour ! Je réponds à vos questions d’électricité : tableau, câbles, protection, solaire, pannes. Que souhaitez-vous savoir ?');
+const chips=document.createElement('div');chips.className='chips';
+['Mon disjoncteur saute souvent','Protéger mes appareils','Installer des panneaux solaires'].forEach(t=>{const b=document.createElement('button');b.type='button';b.textContent=t;b.onclick=()=>{q.value=t;f.requestSubmit()};chips.appendChild(b)});
+log.appendChild(chips);
+f.addEventListener('submit',async e=>{
+  e.preventDefault();const text=q.value.trim();if(!text||busy)return;
+  q.value='';chips.remove();add('me',text);const out=add('bot','…');
+  busy=true;history.push({role:'user',content:text});
+  try{
+    const r=await fetch('/api/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({messages:history,country:document.getElementById('country').value})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||'Erreur');
+    out.textContent=d.text;history.push({role:'assistant',content:d.text});
+  }catch(err){history.pop();out.textContent=err.message||'Réponse impossible pour le moment.'}
+  busy=false;
+});
+</script>
+</body>
+</html>
